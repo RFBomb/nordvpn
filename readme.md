@@ -10,7 +10,7 @@
 
 ## Networking
 
-To access the ports of any containers that run behind the vpn, you will likely need a reverse-proxy setup. This requires any ports used by connected containers to be exposed by the NordVPN container. Then, you will have to run a reverse-proxy to provide access to those. (I have also written an easily usable nginx_proxy container you can view here:  LinkToNginxContainer )
+To access the ports of any containers that run behind the vpn, you will likely need a reverse-proxy setup. This requires any ports used by connected containers to be exposed by the NordVPN container. Then, you will have to run a reverse-proxy to provide access to those. (I have also written an easily usable nginx_proxy container you can view here:  rfbomb/easyproxy )
 
 I would recommend using a Docker-Compose file (or Portainer) to run this container, the nginx container, and anything behind it. See below for an example docker-compose setup that also uses the reverse-proxy.
 
