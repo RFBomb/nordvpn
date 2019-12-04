@@ -7,7 +7,6 @@
 ## IMAGE HAS BEEN COMPILED FOR ARM DEVICES
 * I am using this on a Raspberry Pi 4. and (I'll be honest) am not very interested in building the images for other architectures at the moment.
 * I have provided all required files on the github page for this container. Running the dockerfile should be able to compile it for other architectures on your computer. 
-   * NOTE: You will just have to modify the ARG at the top of the dockerfile for `HostArchitecture`, and it should work ( I think.)
 
 ## Networking
 
@@ -48,7 +47,7 @@ I would recommend using a Docker-Compose file (or Portainer) to run this contain
     -e HostSubnet=192.168.1.0/24 \
     -e SERVER=P2P \
     -p 8080:80 \
-    -d perfectlylegal/nordvpn
+    -d rfbomb/nordvpn
 ```
 * Secondary Service
 ```
@@ -62,7 +61,7 @@ version: '2'
 services:   
 #--------------   VPN  ---------------------------
  vpn:
-  image: perfectlylegal/nordvpn
+  image: rfbomb/nordvpn
   container_name: NordVPN
   stdin_open: true
   tty: true
@@ -95,7 +94,7 @@ services:
 
 #--------------   Reverse Proxy  ---------------------------
 proxy:
-   image: perfectlylegal/nginx_proxy
+   image: rfbomb/easyproxy
    container_name: ReverseProxy
    stdin_open: true
    tty: true
