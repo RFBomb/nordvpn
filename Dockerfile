@@ -13,7 +13,8 @@ RUN \
 		dpkg \
 		curl \
 		gnupg2 \
-		nano
+		nano \
+		bash
 	
 RUN \
 	echo " " && echo "**** Install NordVPN Application ****" && \
