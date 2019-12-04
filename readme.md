@@ -7,6 +7,7 @@
 ## IMAGE HAS BEEN COMPILED FOR ARM DEVICES
 * I am using this on a Raspberry Pi 4. and (I'll be honest) am not very interested in building the images for other architectures at the moment.
 * I have provided all required files on the github page for this container. Running the dockerfile should be able to compile it for other architectures on your computer. 
+   * NOTE: You will just have to modify the ARG at the top of the dockerfile for `HostArchitecture`, and it should work ( I think.)
 
 ## Networking
 
