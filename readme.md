@@ -4,9 +4,14 @@
 * It is running inside a Ubuntu container that has the S6 Overlay installed. 
 * I have written an init-script that runs when the container starts up that will attempt to log into the service, then set up the parameters passed using the environment variables, and finally connect to a server. 
 
-## IMAGE HAS BEEN COMPILED FOR ARM DEVICES
-* I am using this on a Raspberry Pi 4. and (I'll be honest) am not very interested in building the images for other architectures at the moment.
-* I have provided all required files on the github page for this container. Running the dockerfile should be able to compile it for other architectures on your computer. 
+## Running on platforms other than ARM
+* I am using this on a Raspberry Pi running Raspian. I have compiled the :arm tag on that device.
+* Uploading to github lets DockerHub automatically build it for X86, but I am not testing that version.
+	- As such, If it does not  work I would recommend downloading the github repository and building it yourself.
+	- The one item that most likely has to be changed within the dockerfile is:
+			ARG HostArchitecture="armhf"
+	- Change that to whichever architecture you need, specified here: https://github.com/just-containers/s6-overlay#releases
+			
 
 ## Networking
 
@@ -28,25 +33,30 @@ I would recommend using a Docker-Compose file (or Portainer) to run this contain
 
 * `USER`     - User for NordVPN account.
 * `PASS`     - Password for NordVPN account, surrounding the password in single quotes will prevent issues with special characters such as `$`.
-* `HostSubnet`     - NordVPN normally blocks all traffic that isnt through the VPN. Whitelist your host's domain to allow local traffic.
-* `DockerSubnet`     - Whitelist the docker subnet to allow container-container communication.
-    * This may not be required to function, but I included it in the script just in case.
-* `AUTOCONNECT`     - ON/OFF. Since there is an auto-login script that runs on container start, this is sort of unnecessary to specify.
-* `KILLSWITCH`     - ON/OFF. The container can cannot to the internet even if nordvpn becomes disconnected. Setting this to 'ON' kills this internet connection if the connection becomes disconnected for some reason.
-* `CYBERSEC`     - Turn on the CyberSecurity features nordvpn provides on their servers. See NordVPN website for details.
-* `OBFUSCATE`     - Turn server obfuscate on or off. See NordVPN website for details.
-* `SERVER`     - Decide which server / server group you want to connect to. For NordVPN to decide, just don't specify the argument. ( leave as '' ) (See NordVPN website for details) 
+* `HostSubnet`     	- NordVPN normally blocks all traffic that isnt through the VPN. Whitelist your host's domain to allow local traffic.
+* `DockerSubnet`	- Whitelist the docker subnet to allow container-container communication. Required for any reverse proxies.
+* `AUTOCONNECT`     - ON/OFF. Since there is an auto-login script that runs on container start, this is sort of unnecessary to specify. Note: This may reconnect if the connection drops. I haven't tested that much.
+* `KILLSWITCH`     	- ON/OFF. Setting this to 'ON' kills this internet connection if the vpn becomes disconnected for any reason. Default is ON.
+* `CYBERSEC`     	- Turn on the CyberSecurity features nordvpn provides on their servers. See NordVPN website for details.
+* `OBFUSCATE`     	- Turn server obfuscate on or off. See NordVPN website for details.
+* `SERVER`     		- Optional -- Decide which server / server group you want to connect to. For NordVPN to decide, just don't specify the argument. ( leave as '' ) (See NordVPN website for details) 
+* `Protocol`		- Optional -- Set to TCP / UDP depending on preference. Default is UDP.
+* `Tech`			- Optional - OpenVPN / NordLynx -- Set the connection type for NordVPN. Default is OpenVPN
+* `WebTest`	   		- Optional -- Container checks for internet connection on startup by pinging specified address. Shuts down container if ping fails. Default address is 'nordvpn.com'.
+* `RetryTime`       - optional -- Set delay time between failed login attempts (time in seconds)
+* `DebugLogin` 		- Optional -- Set to 'False' by default. If set 'true' then it will show the login information in the log on the event of an incorrect username/password.
+* `DebugNordVPN` 	- Optional -- Set to 'False' by default. If set 'true' then it will enable a verbose log during the LoginScript.
+
 
 ## Docker Run
 
 * NordVPN Container
 ```
     docker run -ti --cap-add=NET_ADMIN --device /dev/net/tun --name vpn \
-    -e USER=user@email.com \
+    -e USER='user@email.com' \
     -e PASS='pas$word' \
     -e HostSubnet=192.168.1.0/24 \
     -e SERVER=P2P \
-    -p 8080:80 \
     -d rfbomb/nordvpn
 ```
 * Secondary Service
@@ -63,28 +73,31 @@ services:
  vpn:
   image: rfbomb/nordvpn
   container_name: NordVPN
-  stdin_open: true
-  tty: true
   cap_add:
     - NET_ADMIN
   devices:
     - /dev/net/tun
   networks:
-      - TS_Bridge
-  #Expose all ports required by other services behind the VPN
+      - Bridge
+  #Expose all ports required by other services behind the VPN so reverse proxy can access them
   expose:
-     - 80
-     - 9090
+     - 4040
   environment:
-     - USER=user@email.com
+     - USER='user@email.com'
      - PASS='pas$word'
-     - HostSubnet=192.168.0.0/24
+     - HostSubnet=192.168.1.0/24
      - DockerSubnet=172.16.1.0/24
-     - AUTOCONNECT=on
-     - KILLSWITCH=on
-     - CYBERSEC=off
-     - OBFUSCATE=off
-     - SERVER=P2P
+     - AUTOCONNECT=on   # on / off
+     - KILLSWITCH=on    # on / off
+     - CYBERSEC=off     # on / off
+     - OBFUSCATE=off    # on / off
+     - SERVER=P2P       # See NordVPN website for details
+	 - Protocol=UDP     #optional -- Set to TCP / UDP depending on preference. Default is UDP.
+	 - Tech=OpenVPN     #optional - OpenVPN / NordLynx -- Set the connection type for NordVPN. Default is OpenVPN
+	 - WebTest=8.8.8.8  #optional -- server to ping to check for internet access
+	 - RetryTime=5      #optional -- Set delay time between failed login attempts (time in seconds)
+	 - DebugLogin=false #optional -- Show username and password in log on login failure
+	 - DebugNordVPN=false #optional -- Show output of nordvpn commands during container startup
   #restart: unless-stopped
 
 #--------------   Services Behind VPN  ---------------------------
@@ -99,11 +112,10 @@ proxy:
    stdin_open: true
    tty: true
    networks:
-      - TS_Bridge
+      - Bridge
    #Map all ports that are exposed in the VPN service
    ports:
      - "80:80" 
-     - "9090:9090"
    volumes:
       - /etc/localtime:/etc/localtime:ro
       - /disks/USB/DockerConfigs/nginx_proxy:/etc/nginx/
@@ -111,7 +123,7 @@ proxy:
 
 #--------------  Network Definition (if desired) ---------------------------
 networks:
-  TS_Bridge:
+  Bridge:
     driver: bridge
     ipam:
      driver: default
@@ -119,3 +131,38 @@ networks:
       - subnet: 172.16.1.0/24
 
 ```
+
+## ChangeLog
+
+1/11/2020
+* Updated to latest version of NordVPN (again)
+* Updated method of installing NordVPN inside DockerFile to take less steps after a pretty informative conversation via Reddit.
+* Heavily changed the LoginScript.sh 
+	- Will now notify if an update to the app is available.
+		- Assuming that the container's apt-get is broken (from my testing it is) then this will require a rebuild of the app. 
+	- Now properly adjusted for single and double quotes in the USER/PASS environment variables.
+	- Will now attempt to log into the service every 5 seconds if the server could not be reached ("Its not you its us" error)
+	- Added a bugfix to actually be able to restart the container, now that I finally found the problem.
+		(It was the socket not releasing inside the container)
+	- the NordVPNd service is now started inside the LoginScript. This is so the loginscript can be run with S6 as part of initialization, instead of as a CMD.
+		- This also allows the startup process error checking to work properly, instead of possibly fighting S6 overlay.
+* Added 'PING' to the container to verify internet access prior to attempting to start everything up.
+* Added 'SLURM' to the container - use 'slurm -i eth0' to see usage statistics when attached
+* Added a proper FinishScript for when the container exits.
+	- These changes allow for restarting the container successfully.
+	- The FinishScript will: 
+		- log out of NordVPN
+		- Kill NordVPN // NordVPNd processes
+		- Remove the sockets in use by the services within the container 
+	
+
+#12/26/2019
+* Updated repo to latest version of NordVPN. 
+* Added a PingTest to check for internet Connection on startup
+* Modified Login Script to work better / correctly.
+* Added WebTest and DebugLogin ENV variables
+* Slight changes to dockerfile
+
+
+# 12/1/2019
+* Intial Release

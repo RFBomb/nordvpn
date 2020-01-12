@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv bash
+
+#This is now started with the 'LoginScript' - Do Not Use!
+exec /usr/sbin/nordvpnd
